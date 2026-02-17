@@ -1,0 +1,21 @@
+/.idea/
+node_modules/**
+.DS_Store
+blod-results/
+playwright-report/
+*.log
+
+# Allure reports
+allure-results/
+allure-report/
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Reports - ignore all contents except placeholder files
+/reports/*
+!/reports/.placeholder
+!/reports/**/.placeholder

@@ -1,0 +1,45 @@
+{
+  "name": "daimler-trucks-financial-services",
+  "version": "1.0.0",
+  "description": "TypeScript framework for automated testing of Daimler Trucks Financial Services websites",
+  "main": "dist/Index.js",
+  "scripts": {
+    "test-local-allure": "npx playwright test --project=local --reporter=allure-playwright",
+    "test-pipeline-allure": "npx playwright test --grep='should complete entire business flow from quotation to case closure' --project=pipeline --reporter=allure-playwright",
+    "test-with-autoit": "pwsh -ExecutionPolicy Bypass -File ./scripts/run-test-with-autoit.ps1",
+    "test-complete-flow": "pwsh -ExecutionPolicy Bypass -File ./scripts/run-test-with-autoit.ps1 -TestGrep 'should complete entire business flow from quotation to case closure' -Project 'local'",
+    "allure:generate": "allure generate allure-results --clean",
+    "allure:open": "allure open allure-report",
+    "allure:serve": "allure serve allure-results",
+    "lint": "eslint \"src/**/*.{ts,spec.ts}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,spec.ts}\" --fix",
+    "check": "prettier --check \"src/**/*.{ts,spec.ts}\" || prettier --write \"src/**/*.{ts,spec.ts}\"; eslint \"src/**/*.{ts,spec.ts}\" || eslint \"src/**/*.{ts,spec.ts}\" --fix"
+  },
+  "keywords": [
+    "automation",
+    "typescript",
+    "reporting",
+    "ci-cd"
+  ],
+  "author": "Playwright Typescript Example",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "allure-commandline": "^2.25.0",
+    "allure-playwright": "^3.0.0",
+    "eslint": "^9.31.0",
+    "jest": "^29.6.0",
+    "playwright-smart-reporter": "^1.0.8",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,176 @@
+name: Playwright Typescript Testing Framework
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "**" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Remove Chrome
+        run: sudo apt purge google-chrome-stable
+
+      - name: Remove default Chromium
+        run: sudo apt purge chromium-browser
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Google Chrome
+        run: |
+          chmod +x ./.github/scripts/installChrome.sh
+          ./.github/scripts/installChrome.sh
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: npx playwright test --shard=${{ matrix.shard }}/2 --project=pipeline
+
+      - name: Upload blob report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          retention-days: 1
+
+      - name: Upload Allure Results
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('allure-results/**') != ''
+        with:
+          name: allure-results-shard${{ matrix.shard }}
+          path: allure-results/
+          retention-days: 30
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('reports/test-results/**') != ''
+        with:
+          name: test-results-shard${{ matrix.shard }}
+          path: reports/test-results/
+          retention-days: 30
+
+      - name: Upload Smart Reports
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('reports/smart-reports/**') != ''
+        with:
+          name: smart-reports-shard${{ matrix.shard }}
+          path: reports/smart-reports/
+          retention-days: 30
+
+  merge-reports:
+    name: Merge Test Reports
+    if: always()
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download all shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Merge blob reports into HTML Report
+        run: |
+          ls -la all-artifacts/
+          mkdir -p blob-reports-merged
+          cp -r all-artifacts/blob-report-*/* blob-reports-merged/
+          ls -la blob-reports-merged/
+          npx playwright merge-reports --reporter html --reporter junit blob-reports-merged
+
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report-merged
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload Merged JUnit Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-report-merged
+          path: test-results.xml
+          retention-days: 30
+
+      - name: Merge Allure Results
+        if: hashFiles('all-artifacts/allure-results-shard*/**') != ''
+        run: |
+          mkdir -p allure-results
+          find all-artifacts/allure-results-shard* -type f \( -name '*.json' -o -name '*.txt' -o -name '*.properties' \) -exec cp {} allure-results/ \;
+          ls -la allure-results/
+
+      - name: Merge Test Results
+        if: hashFiles('all-artifacts/test-results-shard*/**') != ''
+        run: |
+          mkdir -p reports/test-results
+          find all-artifacts/test-results-shard* -type f -exec cp {} reports/test-results/ \;
+          ls -la reports/test-results/
+
+      - name: Merge Smart Reports
+        if: hashFiles('all-artifacts/smart-reports-shard*/**') != ''
+        run: |
+          mkdir -p reports/smart-reports
+          npx playwright-smart-reporter-merge-history \
+            all-artifacts/smart-reports-shard1/test-history.json \
+            all-artifacts/smart-reports-shard2/test-history.json \
+            -o reports/smart-reports/test-history.json \
+            --max-runs 10
+          # Copy the HTML reports from the last shard
+          find all-artifacts/smart-reports-shard* -name '*.html' -exec cp {} reports/smart-reports/ \;
+          ls -la reports/smart-reports/
+
+      - name: Generate Consolidated Allure Report
+        if: always() && hashFiles('allure-results/**') != ''
+        run: npm run allure:generate
+
+      - name: Upload Consolidated Allure Report
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('allure-report/**') != ''
+        with:
+          name: allure-report-consolidated
+          path: allure-report/
+          retention-days: 30
+
+      - name: Upload Consolidated Test Results
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('reports/test-results/**') != ''
+        with:
+          name: test-results-consolidated
+          path: reports/test-results/
+          retention-days: 30
+
+      - name: Upload Consolidated Smart Reports
+        uses: actions/upload-artifact@v4
+        if: always() && hashFiles('reports/smart-reports/**') != ''
+        with:
+          name: smart-reports-consolidated
+          path: reports/smart-reports/
+          retention-days: 30
